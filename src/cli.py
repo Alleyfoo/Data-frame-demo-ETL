@@ -186,6 +186,8 @@ def run_youtube_cli(
     output_fmt: str,
     summary_output: str | None,
     top_n: int,
+    out_dir: str | None,
+    formats: list[str],
 ) -> None:
     if not channel_ids and not playlist_ids:
         raise ValueError("Provide at least one --channel-id or --playlist-id.")
@@ -232,11 +234,24 @@ def run_youtube_cli(
                 frame.to_excel(writer, sheet_name=name[:31], index=False)
         logging.info("Wrote summary workbook to %s", summary_path)
 
+    export_meta = {
+        "source_playlist_ids": playlist_ids or [],
+        "source_channel_ids": channel_ids or [],
+        "max_results": max_results,
+        "output_path": str(out_path),
+        "summary_output": str(summary_output) if summary_output else None,
+        "estimated_quota_units": len(frames),  # rough estimate of API calls
+        "endpoint_call_counts": {"videos": len(frames), "playlistItems": len(playlist_ids or [])},
+    }
+    target_dir = Path(out_dir) if out_dir else out_path.parent
+    export_paths = export_dataset(combined, target_dir, formats=formats, meta=export_meta)
+
     logging.info(
         "Fetched %d YouTube videos and saved to %s",
         len(combined),
         saved,
     )
+    logging.info("Exported artifacts: %s", {k: str(v) for k, v in export_paths.items()})
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -283,6 +298,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional summary workbook path (xlsx with multiple sheets).",
     )
     yt.add_argument("--top-n", type=int, default=10, help="Top N videos to include in summary.")
+    yt.add_argument(
+        "--out-dir",
+        type=str,
+        default="data/output/export",
+        help="Directory to write exported artifacts (manifest + selected formats).",
+    )
+    yt.add_argument(
+        "--format",
+        type=str,
+        default="xlsx,jsonl",
+        help="Comma-separated formats to export (xlsx,jsonl,parquet).",
+    )
 
     return parser
 
@@ -332,6 +359,8 @@ def main(argv: list[str] | None = None) -> int:
                 output_fmt=args.output_fmt,
                 summary_output=args.summary_output,
                 top_n=args.top_n,
+                out_dir=args.out_dir,
+                formats=[f.strip() for f in args.format.split(",") if f.strip()],
             )
             return 0
         except YouTubeAuthError as exc:
