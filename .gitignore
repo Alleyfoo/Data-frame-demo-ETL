@@ -19,3 +19,6 @@ data-frame-tool-clean/
 # Python caches
 __pycache__/
 .pytest_cache/
+
+# Export artifacts
+repo_export.txt

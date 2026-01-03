@@ -1,4 +1,4 @@
-"""Programmatic wrapper around combine-reports logic for UI use."""
+"""Programmatic wrapper around combine logic for UI/CLI use."""
 
 from __future__ import annotations
 

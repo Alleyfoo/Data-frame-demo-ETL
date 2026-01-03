@@ -162,16 +162,6 @@ def run_batch_process(
         process_directory(input_path, company=None)
 
 
-def run_gui() -> None:
-    # Lazy import to avoid loading heavy GUI dependencies when using CLI-only commands.
-    import tkinter as tk
-    from .app import ExcelTemplateApp
-
-    root = tk.Tk()
-    ExcelTemplateApp(root)
-    root.mainloop()
-
-
 def run_combine_cli(input_dir: str, pattern: str, mode: str, keys: list[str], how: str, strict: bool, output: str) -> None:
     engine = DataEngine()
     df = engine.run_combine(
@@ -253,9 +243,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Data Frame Tool")
     sub = parser.add_subparsers(dest="command")
 
-    gui = sub.add_parser("gui", help="Launch the GUI.")
-    gui.set_defaults(command="gui")
-
     run = sub.add_parser("run", help="Process files in batch mode.")
     run.add_argument("--target-dir", type=str, default=str(DEFAULT_INPUT), help="Directory to scan for files")
     run.add_argument("--output-fmt", choices=["xlsx", "parquet"], default="xlsx")
@@ -309,10 +296,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     setup_logging(log_to_file=args.command == "run")
-
-    if args.command == "gui":
-        run_gui()
-        return 0
 
     if args.command == "run":
         run_batch_process(

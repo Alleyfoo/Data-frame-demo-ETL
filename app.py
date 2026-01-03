@@ -1,26 +1,14 @@
 from __future__ import annotations
 
-import importlib
-import importlib.util
-import sys
 from pathlib import Path
+
+import importlib.util
+import streamlit as st
+import sys
 
 REPO_ROOT = Path(__file__).resolve().parent
 SRC_PATH = REPO_ROOT / "src"
-PAGES_DIR = REPO_ROOT / "streamlit" / "pages"
-
-
-def _import_streamlit():
-    repo_root = str(REPO_ROOT.resolve())
-    removed = False
-    if repo_root in sys.path:
-        sys.path.remove(repo_root)
-        removed = True
-    try:
-        return importlib.import_module("streamlit")
-    finally:
-        if removed:
-            sys.path.insert(0, repo_root)
+PAGES_DIR = REPO_ROOT / "webapp" / "pages"
 
 
 def _load_page(path: Path):
@@ -39,8 +27,6 @@ def main() -> None:
     if str(SRC_PATH) not in sys.path:
         sys.path.insert(0, str(SRC_PATH))
 
-    st = _import_streamlit()
-
     st.set_page_config(
         page_title="Data Frame Tool",
         layout="wide",
@@ -57,6 +43,7 @@ def main() -> None:
         "Diagnostics": PAGES_DIR / "05_Diagnostics.py",
         "Template Library": PAGES_DIR / "06_Template_Library.py",
         "Combine & Export": PAGES_DIR / "07_Combine.py",
+        "YouTube Demo": PAGES_DIR / "08_YouTube_Demo.py",
     }
     available = {name: path for name, path in pages.items() if path.exists()}
 

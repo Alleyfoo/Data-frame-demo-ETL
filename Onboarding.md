@@ -1,32 +1,29 @@
-Usage
-1) Onboarding a new file (GUI mode)
-- Run `python main.py`.
-- Select the raw Excel/CSV file.
-- Use the sheet list to pick one or many sheets; toggle "Combine selected sheets" to stack them (a `source_sheet` column is added automatically).
-- The info bar shows approximate rows/columns; hit "Reload Preview" after changing header/skip rows, or "Reset View" to start fresh.
-- Click "Auto-Suggest" to guess column mappings.
-- If the data is wide (months as columns), check "Unpivot".
-- (Optional) Set "Group by" to aggregate by one or more canonical fields (comma-separated), e.g., `order_id` to roll products into the same order or `order_id, article_sku` to keep per-product lines.
-- (Optional) Cleanup options: trim text, drop empty rows, drop sparse columns (set a non-null ratio), and dedupe on keys.
-- (Optional) Cleanup: strip thousands separators in text columns to help numeric parsing.
-- (Optional) Connections: use the Connection Manager to store connection info (in-memory) if you plan to pull from SQL/azure later; local file import remains available.
-- SQL (preview): add a SQL connection, provide a table or query, click “Use Connection” to preview and map. Requires SQLAlchemy + driver installed; connections saved to `connections.yaml`.
-- Credentials tip: leave password blank and set an environment variable `<NAME>_PASSWORD` (uppercased connection name) to avoid storing secrets on disk.
-- SQL Server tip: driver example `mssql+pyodbc`; install Microsoft ODBC Driver 18 plus `pip install sqlalchemy pyodbc`.
-- Examples:
-  - Postgres: driver `postgresql+psycopg2`, host `your-host`, port `5432`, database `your_db`, user `your_user`.
-  - SQL Server: driver `mssql+pyodbc`, host `your-host`, port `1433`, database `your_db`, user `your_user`.
-- Click "Save Template". A df-template file appears next to the data file.
+# Onboarding (Data Frame Tool)
 
-2) Processing data (batch mode)
-- Run `python main.py --batch --target-dir "data/input"` (schedule it if needed).
-- Success: cleaned data goes to output/, source goes to archive/.
-- Failure: source goes to quarantine/ with a .log file explaining the error.
+## What this demo does
+- Streamlit UI for exploring cleaned data and template flows.
+- CLI for batch processing and YouTube ingestion.
+- Pre-baked YouTube outputs in `data/output/` to demo without live calls.
 
-Configuration
-- Base synonyms live in `src/config.yaml`.
-- New header names you map are auto-added to `src/config.user.yaml` when you save a template. Keep `src/config.yaml` for shared defaults; clear `src/config.user.yaml` to reset learned hints.
-- To add new target columns (e.g., Cost Center): update `src/schema.py` and add synonyms for it in `src/config.yaml`.
+## Run paths
+- UI: `streamlit run app.py` (uses `webapp/pages`).
+- CLI (canonical): `python -m src.cli <command>`
+  - `run` — batch process files in `data/input`.
+  - `combine` — merge cleaned outputs.
+  - `youtube` — fetch playlists/channels, add engagement metrics, and write detail + summary outputs.
 
-Consuming the data
-- Run `python combine-reports.py` to stack everything from data/output once templates are in place.
+## YouTube quick demo
+```bash
+setx YOUTUBE_API_KEY "<your-key>"  # or export YOUTUBE_API_KEY=...
+python -m src.cli youtube --playlist-id <PLAYLIST_ID> --max-results 50 --summary-output data/output/youtube_summary.xlsx
+```
+Outputs land in `data/output/` (detail + summary workbook).
+
+## Legacy notes
+- Tkinter GUI command is removed from the CLI; Streamlit is the primary UI.
+- The old `combine-reports.py` script was removed—use `python -m src.cli combine`.
+
+## Old → New CLI mapping
+- `python main.py --batch ...` → `python -m src.cli run ...`
+- `python combine-reports.py` → `python -m src.cli combine ...`
+- `python main.py gui` → not exposed (Tkinter UI is legacy-only)

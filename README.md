@@ -1,78 +1,60 @@
-# Provider Data Ingestor
+# Data Frame Tool (YouTube ETL Demo)
 
-A robust, schema-validated pipeline for standardizing Excel/CSV data from multiple providers.
+Lightweight ETL demo for pulling YouTube metadata, inspecting it in Streamlit, and exporting cleaned outputs with summaries.
 
-## 📂 Project Structure
+## Install
 
-- **`main.py`**: The entry point. Runs the GUI or the Batch Processor.
-- **`config.yaml`**: Defines synonyms for auto-mapping columns.
-- **`src/app.py`**: The UI for creating mapping templates.
-- **`src/pipeline.py`**: The logic that cleans, unpivots, and validates data.
-- **`src/schema.py`**: Defines the "Contract" (Data Types) required for output.
-- **`data/`**:
-    - `input/`: Drop raw files here.
-    - `output/`: Clean, standardized files appear here.
-    - `schemas/`: Place canonical/target output examples or schema files here to keep `output/` tidy.
-    - `archive/`: Successfully processed source files are moved here.
-    - `quarantine/`: Failed files are moved here with an error log.
+```bash
+python -m venv .venv
+.venv\Scripts\activate  # or source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-## 🚀 Installation
+## Run
 
-1. Install Python 3.10+
-2. Install dependencies:
-   ```bash
-   pip install pandas openpyxl pyyaml pandera sqlalchemy psycopg2-binary
-   ```
+- Streamlit UI (canonical UI): `streamlit run app.py`
+- CLI (canonical): `python -m src.cli <command> [...]`
+  - Batch files: `python -m src.cli run --target-dir data/input`
+  - Combine cleaned outputs: `python -m src.cli combine --input-dir data/output --pattern "*.xlsx" --output Master_Sales_Report.xlsx`
+  - YouTube ETL: see below
 
-## SQL Connection Examples
+`main.py` remains as a thin shim to `src.cli` for compatibility; prefer the `python -m src.cli` form above.
 
-- Postgres: driver `postgresql+psycopg2`, host `your-host`, port `5432`, database `your_db`, user `your_user`. Leave password empty and set env var `<NAME>_PASSWORD` to avoid storing secrets.
-- SQL Server: driver `mssql+pyodbc`, host `your-host`, port `1433`, database `your_db`, user `your_user`. Install Microsoft ODBC Driver 18 and `pip install sqlalchemy pyodbc`. Password can also come from `<NAME>_PASSWORD`.
-- Quick SQL test without a DB: install `duckdb` and run ad-hoc SQL over files, e.g.:
-  ```bash
-  pip install duckdb
-  python - <<'PY'
-  import duckdb
-  df = duckdb.query("SELECT * FROM read_excel('data/input/sample.xlsx') LIMIT 5").df()
-  print(df.head())
-  PY
-  ```
+## YouTube API demo (happy path)
 
-## Streamlit UI
+Use the YouTube Data API to pull channel uploads or playlist items directly into the pipeline.
 
-- Run: `streamlit run app.py`
-- Pages: Dashboard, Upload, Mapping, Query Builder, Diagnostics, Template Library, Combine & Export.
--
-- See `QUICKSTART.md` for a guided first run.
+1) Set an API key: `setx YOUTUBE_API_KEY "<your-key>"` (Windows) or `export YOUTUBE_API_KEY=...`.
 
-## Query Builder
+2) Fetch one or more sources, add engagement metrics, and emit a summary workbook:
+```bash
+python -m src.cli youtube ^
+  --playlist-id PL123 ^
+  --playlist-id PL456 ^
+  --channel-id UC789 ^
+  --max-results 50 ^
+  --output data/output/youtube_detail.xlsx ^
+  --summary-output data/output/youtube_summary.xlsx ^
+  --top-n 15
+```
+Outputs:
+- Detail file (`--output`): includes `engagement_rate`, `engagement_rate_pct`, and `source`.
+- Summary workbook (`--summary-output`): sheets `top_videos`, `per_channel`, `per_year`, plus the full detail sheet.
 
-The Query Builder page provides a visual SQL-like builder using a Source Canvas,
-operator palette, and a generated SQL preview. See `GUIDE_QUERY_BUILDER.md` for
-usage details.
+Sample demo data is already checked in under `data/output/` for offline walkthroughs.
 
-## Template Library
+## Project structure (trimmed for the demo)
 
-The Template Library page lists `.df-template.json` files, shows the JSON
-contents, and supports batch processing over an input directory. Use it to
-duplicate, inspect, and run templates without writing code.
+- `app.py` — Streamlit launcher (uses `webapp/pages`).
+- `src/cli.py` — canonical CLI (`run`, `combine`, `youtube`).
+- `src/youtube.py` — YouTube API client + summaries.
+- `data/output/` — demo outputs (detail + summary).
+- `webapp/` — Streamlit pages.
+- `legacy/` (optional) — place old Tkinter assets here if needed; GUI command removed from CLI.
 
-## YouTube API Data Flow
+## Notes
 
-Use the YouTube Data API to pull channel uploads or playlist items directly into
-the pipeline:
-
-1. Create an API key in the Google Cloud console and set it locally:  
-   `setx YOUTUBE_API_KEY "<your-key>"` (Windows) or `export YOUTUBE_API_KEY=...`.
-2. Fetch uploads into the standard output folder (xlsx by default):  
-   `python main.py youtube --channel-id <CHANNEL_ID> --max-results 50`
-3. To target a playlist instead of a channel:  
-   `python main.py youtube --playlist-id <PLAYLIST_ID> --output data/output/youtube_videos.parquet --output-fmt parquet`
-4. Combine multiple sources, add engagement metrics, and emit a summary workbook:  
-   `python main.py youtube --playlist-id PL123 --playlist-id PL456 --channel-id UC789 --max-results 50 --summary-output data/output/youtube_summary.xlsx --top-n 15`
-   - Detail output: `--output` (xlsx/parquet) includes `engagement_rate`, `engagement_rate_pct`, and `source`.
-   - Summary workbook sheets: `top_videos`, `per_channel`, `per_year` plus the full detail sheet.
-
-Outputs include video metadata (title, duration, publish date) and engagement
-stats (views, likes, comments), making it easy to experiment with the ETL
-pipeline against API-driven data.
+- Dependencies are consolidated in `requirements.txt` (includes Streamlit and dev tools like pytest/ruff).
+- Combine reports via the CLI `combine` subcommand (the old `combine-reports.py` script was removed).
+- Tkinter GUI is no longer exposed via CLI; Streamlit is the primary UI.
+- `Makefile` targets: `lint`, `test`, `run-ui`, `demo-youtube`.
