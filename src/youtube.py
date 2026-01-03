@@ -156,7 +156,7 @@ def fetch_videos_dataframe(
         api_key: Explicit API key (otherwise reads YOUTUBE_API_KEY env var).
     """
     key = _get_api_key(api_key)
-    target_playlist = playlist_id or _uploads_playlist_id(channel_id, key) if channel_id else None
+    target_playlist = playlist_id if playlist_id else (_uploads_playlist_id(channel_id, key) if channel_id else None)
     if not target_playlist:
         raise ValueError("Provide a channel_id or playlist_id to fetch videos.")
 

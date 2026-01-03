@@ -6,12 +6,10 @@ import argparse
 import logging
 import shutil
 import sys
-import tkinter as tk
 from pathlib import Path
 
 import pandas as pd
 
-from .app import ExcelTemplateApp
 from .api.v1.engine import DataEngine, warn_on_schema_diff
 from .connectors import check_sqlalchemy_available
 from .templates import Template, load_template, locate_template, locate_streamlit_template
@@ -160,6 +158,10 @@ def run_batch_process(
 
 
 def run_gui() -> None:
+    # Lazy import to avoid loading heavy GUI dependencies when using CLI-only commands.
+    import tkinter as tk
+    from .app import ExcelTemplateApp
+
     root = tk.Tk()
     ExcelTemplateApp(root)
     root.mainloop()
