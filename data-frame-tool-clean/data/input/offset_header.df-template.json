@@ -1,0 +1,54 @@
+{
+  "template_version": 3,
+  "source_type": "excel",
+  "sheet": "Departments",
+  "header_row": 3,
+  "skiprows": [],
+  "delimiter": ",",
+  "encoding": "utf-8",
+  "columns": [
+    "department",
+    "active",
+    "owner",
+    "budget"
+  ],
+  "column_mappings": {
+    "department": "invoice_id",
+    "active": "date",
+    "owner": "provider_name",
+    "budget": "amount"
+  },
+  "headers": [
+    {
+      "name": "department",
+      "column": 0,
+      "row": 3,
+      "alias": "invoice_id"
+    },
+    {
+      "name": "active",
+      "column": 2,
+      "row": 3,
+      "alias": "date"
+    },
+    {
+      "name": "owner",
+      "column": 1,
+      "row": 3,
+      "alias": "provider_name"
+    },
+    {
+      "name": "budget",
+      "column": 3,
+      "row": 3,
+      "alias": "amount"
+    }
+  ],
+  "source_file": "offset_header.xlsx",
+  "output_dir": "F:/download/google/data-frame-tool-main/data-frame-tool-main/data/input",
+  "provider_name": null,
+  "unpivot": false,
+  "id_columns": [],
+  "var_name": "report_date",
+  "value_name": "sales_amount"
+}

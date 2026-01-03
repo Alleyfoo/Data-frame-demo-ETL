@@ -1,0 +1,11 @@
+synonyms:
+  provider_id:
+  - provider_id
+  unit_price:
+  - amount
+  product:
+  - product
+  quantity:
+  - quantity
+  amount:
+  - amount

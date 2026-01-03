@@ -1,0 +1,127 @@
+# --------------------------------------------------------------------
+# MASTER CONFIGURATION FOR DATA INGESTOR
+# --------------------------------------------------------------------
+# What this file does:
+# - feeds auto-mapping: synonyms below drive the "Auto-Suggest" button
+# - documents validation expectations for the pipeline
+# - stays human friendly; keep short, lowercase terms for best matching
+#
+# Where learned patterns are stored:
+# - When you save a template in the UI, any new header names you mapped
+#   are appended to: src/config.user.yaml
+# - Keep this file as the "defaults" you want to ship to everyone.
+#
+# Only the `synonyms` and `validation_rules` keys are used by the app today.
+# `patterns` is here as guidance for humans when designing templates.
+
+synonyms:
+  provider_id:
+    - provider
+    - vendor
+    - supplier
+    - source
+    - partner
+    - distributor
+    - department
+    - channel
+    - account
+
+  article_sku:
+    - sku
+    - article
+    - item
+    - material
+    - product
+    - description
+    - desc
+    - part no
+    - identifier
+    - owner
+    - product name
+    - product id
+    - item code
+
+  report_date:
+    - date
+    - period
+    - month
+    - time
+    - year
+    - invoice date
+    - doc date
+    - billing period
+    - posting date
+    - calendar month
+
+  sales_qty:
+    - qty
+    - quantity
+    - units
+    - vol
+    - volume
+    - pcs
+    - pieces
+    - sold
+    - budget
+    - units sold
+
+  sales_amount:
+    - amount
+    - total
+    - value
+    - revenue
+    - sales
+    - net
+    - gross
+    - eur
+    - usd
+    - turnover
+    - sales value
+    - net sales
+    - gross sales
+
+  order_id:
+    - order
+    - order_id
+    - id
+    - po number
+    - purchase order
+    - reference
+
+  region:
+    - region
+    - area
+    - location
+    - zone
+    - market
+
+  unit_price:
+    - unit_price
+    - price
+    - unit cost
+    - rate
+    - unit value
+
+# --------------------------------------------------------------------
+# PATTERNS (Guidance for template creators)
+# --------------------------------------------------------------------
+# These are not consumed by the code yet; they are crib notes to keep
+# templates consistent and remind you what to look for in messy files.
+patterns:
+  wide_month_headers:
+    description: "If you see JAN, FEB, MAR etc. as columns, switch on Unpivot."
+    examples: ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+  drop_noise_columns:
+    description: "Columns to drop during clean-up (totals, comments, empty notes)."
+    examples: ["total", "grand total", "comment", "note", "remarks", "blank", "n/a"]
+  numeric_as_text_hints:
+    description: "Fields that often arrive as text but should be numeric."
+    examples: ["sales_amount", "sales_qty", "unit_price"]
+
+# --------------------------------------------------------------------
+#  VALIDATION RULES (Documented expectations)
+# --------------------------------------------------------------------
+validation_rules:
+  allow_duplicates: false
+  date_format: "%Y-%m-%d"
+  quarantine_threshold: 0.1  # If >10% of rows fail, reject the whole file

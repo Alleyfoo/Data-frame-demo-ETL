@@ -1,0 +1,14 @@
+# Ignore generated sample workbooks and outputs
+samples/*.xls*
+samples/*.csv
+
+# Ignore CLI template/configuration artifacts
+*.template.json
+*_template.*
+
+# Ignore generated CSV outputs
+*_cleaned.csv
+combined.csv
+
+# Ignore centralized export directory (if used)
+/outputs/
