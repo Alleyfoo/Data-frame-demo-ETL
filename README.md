@@ -68,6 +68,10 @@ the pipeline:
    `python main.py youtube --channel-id <CHANNEL_ID> --max-results 50`
 3. To target a playlist instead of a channel:  
    `python main.py youtube --playlist-id <PLAYLIST_ID> --output data/output/youtube_videos.parquet --output-fmt parquet`
+4. Combine multiple sources and add engagement metrics:  
+   `python main.py youtube --playlist-id PL123 --playlist-id PL456 --channel-id UC789 --max-results 50`
+   - Outputs include `engagement_rate` and `engagement_rate_pct` plus a `source`
+     column noting which playlist/channel each video came from.
 
 Outputs include video metadata (title, duration, publish date) and engagement
 stats (views, likes, comments), making it easy to experiment with the ETL

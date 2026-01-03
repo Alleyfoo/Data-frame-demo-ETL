@@ -13,7 +13,7 @@ import pandas as pd
 from .api.v1.engine import DataEngine, warn_on_schema_diff
 from .connectors import check_sqlalchemy_available
 from .templates import Template, load_template, locate_template, locate_streamlit_template
-from .youtube import YouTubeAuthError, fetch_videos_dataframe
+from .youtube import YouTubeAuthError, add_engagement_metrics, fetch_videos_dataframe
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -183,28 +183,50 @@ def run_combine_cli(input_dir: str, pattern: str, mode: str, keys: list[str], ho
 
 
 def run_youtube_cli(
-    channel_id: str | None,
-    playlist_id: str | None,
+    channel_ids: list[str] | None,
+    playlist_ids: list[str] | None,
     max_results: int,
     api_key: str | None,
     output: str,
     output_fmt: str,
 ) -> None:
-    df = fetch_videos_dataframe(
-        channel_id=channel_id,
-        playlist_id=playlist_id,
-        max_results=max_results,
-        api_key=api_key,
-    )
+    if not channel_ids and not playlist_ids:
+        raise ValueError("Provide at least one --channel-id or --playlist-id.")
+
+    frames: list[pd.DataFrame] = []
+
+    for pid in playlist_ids or []:
+        df = fetch_videos_dataframe(
+            playlist_id=pid,
+            max_results=max_results,
+            api_key=api_key,
+        )
+        df["source"] = f"playlist:{pid}"
+        frames.append(df)
+
+    for cid in channel_ids or []:
+        df = fetch_videos_dataframe(
+            channel_id=cid,
+            max_results=max_results,
+            api_key=api_key,
+        )
+        df["source"] = f"channel:{cid}"
+        frames.append(df)
+
+    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=[])
+    if not combined.empty:
+        combined = combined.drop_duplicates(subset=["video_id"])
+        combined = add_engagement_metrics(combined)
+        combined = combined.sort_values(by=["view_count", "like_count"], ascending=False)
+
     out_path = Path(output)
     if output_fmt == "parquet":
         out_path = out_path.with_suffix(".parquet")
-    saved = _save_output(df, out_path)
+    saved = _save_output(combined, out_path)
     logging.info(
-        "Fetched %d YouTube videos and saved to %s (source: %s)",
-        len(df),
+        "Fetched %d YouTube videos and saved to %s",
+        len(combined),
         saved,
-        playlist_id or channel_id or "unspecified",
     )
 
 
@@ -237,8 +259,8 @@ def build_parser() -> argparse.ArgumentParser:
     combine.add_argument("--output", type=str, default="Master_Sales_Report.xlsx")
 
     yt = sub.add_parser("youtube", help="Fetch a YouTube channel or playlist into a DataFrame output.")
-    yt.add_argument("--channel-id", type=str, help="YouTube channel ID to pull uploads from")
-    yt.add_argument("--playlist-id", type=str, help="Playlist ID to pull from (overrides channel)")
+    yt.add_argument("--channel-id", type=str, action="append", dest="channel_ids", help="YouTube channel ID to pull uploads from (repeatable)")
+    yt.add_argument("--playlist-id", type=str, action="append", dest="playlist_ids", help="Playlist ID to pull from (repeatable)")
     yt.add_argument("--api-key", type=str, help="YouTube Data API key; defaults to YOUTUBE_API_KEY env var")
     yt.add_argument("--max-results", type=int, default=25, help="Maximum videos to fetch")
     yt.add_argument(
@@ -293,8 +315,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "youtube":
         try:
             run_youtube_cli(
-                channel_id=args.channel_id,
-                playlist_id=args.playlist_id,
+                channel_ids=args.channel_ids,
+                playlist_ids=args.playlist_ids,
                 max_results=args.max_results,
                 api_key=args.api_key,
                 output=args.output,

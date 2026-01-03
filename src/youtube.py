@@ -27,6 +27,11 @@ OUTPUT_COLUMNS = [
     "tags",
     "thumbnail_url",
 ]
+DERIVED_COLUMNS = [
+    "source",
+    "engagement_rate",
+    "engagement_rate_pct",
+]
 
 
 class YouTubeAuthError(RuntimeError):
@@ -202,4 +207,20 @@ def fetch_videos_dataframe(
     return df
 
 
-__all__ = ["fetch_videos_dataframe", "YouTubeAuthError"]
+def add_engagement_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """Add engagement_rate metrics; avoids division by zero."""
+    if df.empty:
+        return df
+    base = df.copy()
+    likes = base["like_count"] if "like_count" in base else pd.Series(0, index=base.index)
+    comments = base["comment_count"] if "comment_count" in base else pd.Series(0, index=base.index)
+    views = base["view_count"] if "view_count" in base else pd.Series(0, index=base.index)
+    engagement = (likes.fillna(0) + comments.fillna(0)).astype(float)
+    denom = pd.to_numeric(views.replace({0: None}), errors="coerce")
+    rate = engagement.divide(denom).fillna(0.0)
+    base["engagement_rate"] = rate
+    base["engagement_rate_pct"] = (rate * 100).round(2)
+    return base
+
+
+__all__ = ["fetch_videos_dataframe", "YouTubeAuthError", "add_engagement_metrics"]
