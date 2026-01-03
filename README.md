@@ -1,4 +1,4 @@
-# Data Frame Tool (YouTube ETL Demo)
+# A simple Data Frame Tool for Youtube data (YouTube ETL Demo)
 
 Lightweight ETL demo for pulling YouTube metadata, inspecting it in Streamlit, and exporting cleaned outputs with summaries.
 
