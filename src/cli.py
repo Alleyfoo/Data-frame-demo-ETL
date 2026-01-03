@@ -13,7 +13,12 @@ import pandas as pd
 from .api.v1.engine import DataEngine, warn_on_schema_diff
 from .connectors import check_sqlalchemy_available
 from .templates import Template, load_template, locate_template, locate_streamlit_template
-from .youtube import YouTubeAuthError, add_engagement_metrics, fetch_videos_dataframe
+from .youtube import (
+    YouTubeAuthError,
+    add_engagement_metrics,
+    build_summaries,
+    fetch_videos_dataframe,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -189,6 +194,8 @@ def run_youtube_cli(
     api_key: str | None,
     output: str,
     output_fmt: str,
+    summary_output: str | None,
+    top_n: int,
 ) -> None:
     if not channel_ids and not playlist_ids:
         raise ValueError("Provide at least one --channel-id or --playlist-id.")
@@ -218,11 +225,23 @@ def run_youtube_cli(
         combined = combined.drop_duplicates(subset=["video_id"])
         combined = add_engagement_metrics(combined)
         combined = combined.sort_values(by=["view_count", "like_count"], ascending=False)
+        summaries = build_summaries(combined, top_n=top_n)
+    else:
+        summaries = {"detail": combined}
 
     out_path = Path(output)
     if output_fmt == "parquet":
         out_path = out_path.with_suffix(".parquet")
     saved = _save_output(combined, out_path)
+
+    if summary_output and summaries:
+        summary_path = Path(summary_output)
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        with pd.ExcelWriter(summary_path) as writer:
+            for name, frame in summaries.items():
+                frame.to_excel(writer, sheet_name=name[:31], index=False)
+        logging.info("Wrote summary workbook to %s", summary_path)
+
     logging.info(
         "Fetched %d YouTube videos and saved to %s",
         len(combined),
@@ -270,6 +289,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path for the dataset (xlsx or parquet).",
     )
     yt.add_argument("--output-fmt", choices=["xlsx", "parquet"], default="xlsx")
+    yt.add_argument(
+        "--summary-output",
+        type=str,
+        default=str(OUTPUT_DIR / "youtube_summary.xlsx"),
+        help="Optional summary workbook path (xlsx with multiple sheets).",
+    )
+    yt.add_argument("--top-n", type=int, default=10, help="Top N videos to include in summary.")
 
     return parser
 
@@ -321,6 +347,8 @@ def main(argv: list[str] | None = None) -> int:
                 api_key=args.api_key,
                 output=args.output,
                 output_fmt=args.output_fmt,
+                summary_output=args.summary_output,
+                top_n=args.top_n,
             )
             return 0
         except YouTubeAuthError as exc:

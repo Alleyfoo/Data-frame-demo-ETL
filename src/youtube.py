@@ -32,6 +32,7 @@ DERIVED_COLUMNS = [
     "engagement_rate",
     "engagement_rate_pct",
 ]
+SUMMARY_SHEETS = ["detail", "top_videos", "per_channel", "per_year"]
 
 
 class YouTubeAuthError(RuntimeError):
@@ -223,4 +224,54 @@ def add_engagement_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return base
 
 
-__all__ = ["fetch_videos_dataframe", "YouTubeAuthError", "add_engagement_metrics"]
+def build_summaries(df: pd.DataFrame, top_n: int = 10) -> dict[str, pd.DataFrame]:
+    """Create summary DataFrames for reporting/demo."""
+    if df.empty:
+        return {
+            "detail": df,
+            "top_videos": pd.DataFrame(columns=OUTPUT_COLUMNS + DERIVED_COLUMNS),
+            "per_channel": pd.DataFrame(
+                columns=["channel_title", "video_count", "views", "likes", "comments", "avg_engagement_pct"]
+            ),
+            "per_year": pd.DataFrame(columns=["year", "video_count", "views", "likes", "comments"]),
+        }
+
+    detail = df.copy()
+    detail["published_dt"] = pd.to_datetime(detail["published_at"], errors="coerce")
+    top_videos = detail.sort_values(by=["view_count", "like_count"], ascending=False).head(top_n)
+
+    per_channel = (
+        detail.groupby("channel_title", dropna=False)
+        .agg(
+            video_count=("video_id", "count"),
+            views=("view_count", "sum"),
+            likes=("like_count", "sum"),
+            comments=("comment_count", "sum"),
+            avg_engagement_pct=("engagement_rate_pct", "mean"),
+        )
+        .reset_index()
+        .sort_values(by="views", ascending=False)
+    )
+
+    per_year = (
+        detail.assign(year=detail["published_dt"].dt.year)
+        .groupby("year", dropna=False)
+        .agg(
+            video_count=("video_id", "count"),
+            views=("view_count", "sum"),
+            likes=("like_count", "sum"),
+            comments=("comment_count", "sum"),
+        )
+        .reset_index()
+        .sort_values(by="year")
+    )
+
+    return {
+        "detail": detail.drop(columns=["published_dt"]),
+        "top_videos": top_videos.drop(columns=["published_dt"]),
+        "per_channel": per_channel,
+        "per_year": per_year,
+    }
+
+
+__all__ = ["fetch_videos_dataframe", "YouTubeAuthError", "add_engagement_metrics", "build_summaries"]

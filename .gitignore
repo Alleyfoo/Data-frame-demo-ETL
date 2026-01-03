@@ -12,3 +12,10 @@ combined.csv
 
 # Ignore centralized export directory (if used)
 /outputs/
+
+# Local-only copies from upstream repo
+data-frame-tool-clean/
+
+# Python caches
+__pycache__/
+.pytest_cache/
