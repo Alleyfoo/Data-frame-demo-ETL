@@ -15,6 +15,7 @@ from .app import ExcelTemplateApp
 from .api.v1.engine import DataEngine, warn_on_schema_diff
 from .connectors import check_sqlalchemy_available
 from .templates import Template, load_template, locate_template, locate_streamlit_template
+from .youtube import YouTubeAuthError, fetch_videos_dataframe
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -22,6 +23,7 @@ DEFAULT_INPUT = DATA_DIR / "input"
 OUTPUT_DIR = DATA_DIR / "output"
 ARCHIVE_DIR = DATA_DIR / "archive"
 QUARANTINE_DIR = DATA_DIR / "quarantine"
+YOUTUBE_DEFAULT_OUTPUT = OUTPUT_DIR / "youtube_videos.xlsx"
 
 
 def setup_logging(log_to_file: bool = False) -> None:
@@ -178,6 +180,32 @@ def run_combine_cli(input_dir: str, pattern: str, mode: str, keys: list[str], ho
     logging.info("Combined %d rows using mode=%s. Saved to %s", len(df), mode, out_path)
 
 
+def run_youtube_cli(
+    channel_id: str | None,
+    playlist_id: str | None,
+    max_results: int,
+    api_key: str | None,
+    output: str,
+    output_fmt: str,
+) -> None:
+    df = fetch_videos_dataframe(
+        channel_id=channel_id,
+        playlist_id=playlist_id,
+        max_results=max_results,
+        api_key=api_key,
+    )
+    out_path = Path(output)
+    if output_fmt == "parquet":
+        out_path = out_path.with_suffix(".parquet")
+    saved = _save_output(df, out_path)
+    logging.info(
+        "Fetched %d YouTube videos and saved to %s (source: %s)",
+        len(df),
+        saved,
+        playlist_id or channel_id or "unspecified",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Data Frame Tool")
     sub = parser.add_subparsers(dest="command")
@@ -205,6 +233,19 @@ def build_parser() -> argparse.ArgumentParser:
     combine.add_argument("--how", choices=["inner", "outer", "left", "right"], default="inner")
     combine.add_argument("--strict-schema", action="store_true")
     combine.add_argument("--output", type=str, default="Master_Sales_Report.xlsx")
+
+    yt = sub.add_parser("youtube", help="Fetch a YouTube channel or playlist into a DataFrame output.")
+    yt.add_argument("--channel-id", type=str, help="YouTube channel ID to pull uploads from")
+    yt.add_argument("--playlist-id", type=str, help="Playlist ID to pull from (overrides channel)")
+    yt.add_argument("--api-key", type=str, help="YouTube Data API key; defaults to YOUTUBE_API_KEY env var")
+    yt.add_argument("--max-results", type=int, default=25, help="Maximum videos to fetch")
+    yt.add_argument(
+        "--output",
+        type=str,
+        default=str(YOUTUBE_DEFAULT_OUTPUT),
+        help="Output path for the dataset (xlsx or parquet).",
+    )
+    yt.add_argument("--output-fmt", choices=["xlsx", "parquet"], default="xlsx")
 
     return parser
 
@@ -246,6 +287,24 @@ def main(argv: list[str] | None = None) -> int:
             output=args.output,
         )
         return 0
+
+    if args.command == "youtube":
+        try:
+            run_youtube_cli(
+                channel_id=args.channel_id,
+                playlist_id=args.playlist_id,
+                max_results=args.max_results,
+                api_key=args.api_key,
+                output=args.output,
+                output_fmt=args.output_fmt,
+            )
+            return 0
+        except YouTubeAuthError as exc:
+            logging.error(str(exc))
+            return 1
+        except Exception as exc:  # pragma: no cover - CLI passthrough
+            logging.error("YouTube fetch failed: %s", exc)
+            return 1
 
     parser.print_help()
     return 1

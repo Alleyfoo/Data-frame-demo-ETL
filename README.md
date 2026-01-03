@@ -56,3 +56,19 @@ usage details.
 The Template Library page lists `.df-template.json` files, shows the JSON
 contents, and supports batch processing over an input directory. Use it to
 duplicate, inspect, and run templates without writing code.
+
+## YouTube API Data Flow
+
+Use the YouTube Data API to pull channel uploads or playlist items directly into
+the pipeline:
+
+1. Create an API key in the Google Cloud console and set it locally:  
+   `setx YOUTUBE_API_KEY "<your-key>"` (Windows) or `export YOUTUBE_API_KEY=...`.
+2. Fetch uploads into the standard output folder (xlsx by default):  
+   `python main.py youtube --channel-id <CHANNEL_ID> --max-results 50`
+3. To target a playlist instead of a channel:  
+   `python main.py youtube --playlist-id <PLAYLIST_ID> --output data/output/youtube_videos.parquet --output-fmt parquet`
+
+Outputs include video metadata (title, duration, publish date) and engagement
+stats (views, likes, comments), making it easy to experiment with the ETL
+pipeline against API-driven data.
